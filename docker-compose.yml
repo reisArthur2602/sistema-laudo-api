@@ -1,0 +1,12 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=master
+      - POSTGRES_PASSWORD=masterccm02
+      - POSTGRES_DB=master
+    volumes:
+      - .docker/db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
