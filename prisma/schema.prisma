@@ -1,0 +1,107 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id        String      @id @default(cuid())
+  name      String
+  email     String      @unique
+  memberOn  Member[]
+  createdAt DateTime    @default(now())
+}
+
+model Organization {
+  id        String      @id @default(cuid())
+  name      String
+  members   Member[]
+  invites   Invite[]
+  patients  Patient[]
+  createdAt DateTime    @default(now())
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  role           Role
+  active         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+}
+
+model Invite {
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  email          String
+  role           Role
+  token          String       @unique
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+}
+
+model Patient {
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  name           String
+  patientId      String?
+  studies        Study[]
+  createdAt      DateTime     @default(now())
+}
+
+model Study {
+  id        String   @id @default(cuid())
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  patientId String
+  studyId   String
+  modality  String
+  studyDate DateTime
+  series    Series[]
+  reports   Report[]
+  createdAt DateTime @default(now())
+}
+
+model Series {
+  id          String    @id @default(cuid())
+  study       Study     @relation(fields: [studyId], references: [id])
+  studyId     String
+  modality    String
+  orthancId   String
+  operatorName String?
+  instances   Instance[]
+  createdAt   DateTime  @default(now())
+}
+
+model Instance {
+  id        String   @id @default(cuid())
+  series    Series   @relation(fields: [seriesId], references: [id])
+  seriesId  String
+  orthancId String
+  previewUrl String
+  fileUrl    String
+  createdAt  DateTime @default(now())
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  study     Study    @relation(fields: [studyId], references: [id])
+  studyId   String
+  name      String
+  path      String
+  createdAt DateTime @default(now())
+}

@@ -1,6 +1,7 @@
 import { type FastifyInstance } from "fastify";
 import { type ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
+import { prisma } from "../../../lib/prisma.js";
 
 export const createUserSession = (app: FastifyInstance) => {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -32,6 +33,7 @@ export const createUserSession = (app: FastifyInstance) => {
         { id: 1 },
         { sign: { expiresIn: "7d" } }
       );
+
       return reply.status(200).send({ accessToken });
     }
   );
