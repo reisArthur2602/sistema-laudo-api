@@ -14,7 +14,11 @@ import {
 } from "fastify-type-provider-zod";
 
 import { errorHandler } from "./routes/error-handler.js";
-import { createUserSession } from "./routes/user/auth-user.js";
+import { createUserSession } from "./routes/session/create-user-session.js";
+import { getUserSession } from "./routes/session/get-user-session.js";
+
+const PORT = Number(process.env.PORT) || 3333;
+const HOST = process.env.HOST || "localhost";
 
 const server = fastify().withTypeProvider<ZodTypeProvider>();
 
@@ -35,36 +39,30 @@ server.register(fastifySwagger, {
     info: {
       title: "Central de Imagens Médicas - API",
       version: "1.0.0",
-      description: `
-API responsável pela **centralização e gerenciamento de imagens médicas** provenientes do servidor **Orthanc**.
-
-### Principais funcionalidades
-- Autenticação e controle de acesso de usuários
-- Integração com servidor Orthanc (PACS)
-- Consulta e organização de estudos DICOM
-- Suporte a múltiplas clínicas/unidades
-      `,
+      description:
+        "API responsável pela **centralização e gerenciamento de imagens médicas** provenientes do servidor **Orthanc**",
     },
-    servers: [],
+
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
   },
   transform: jsonSchemaTransform,
 });
 
 server.register(fastifySwaggerUi, {
   routePrefix: "/docs",
-  staticCSP: true,
-  uiConfig: {
-    docExpansion: "full",
-    deepLinking: true,
-    defaultModelsExpandDepth: 2,
-    persistAuthorization: true,
-  },
 });
 
+// routes
 server.register(createUserSession);
-
-const PORT = Number(process.env.PORT) || 3333;
-const HOST = process.env.HOST || "localhost";
+server.register(getUserSession);
 
 server.listen({ port: PORT, host: HOST }).then(() => {
   console.log(`✅ Servidor rodando em: http://${HOST}:${PORT}`);

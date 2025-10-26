@@ -1,0 +1,45 @@
+import { FastifyInstance } from "fastify";
+import { ZodTypeProvider } from "fastify-type-provider-zod";
+import z from "zod";
+import { prisma } from "../../../lib/prisma.js";
+import { UnauthorizedError } from "../_errors/unauthorized-error.js";
+import { authPlugin } from "../../plugins/auth.js";
+
+export const getUserSession = (app: FastifyInstance) => {
+  app
+    .withTypeProvider<ZodTypeProvider>()
+    .register(authPlugin)
+    .get(
+      "/user-session",
+      {
+        schema: {
+          tags: ["Session"],
+          summary: "Buscar sessão do usuário logado",
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: z.object({
+              user: z.object({
+                id: z.string().cuid(),
+                name: z.string(),
+                email: z.string().email(),
+              }),
+            }),
+          },
+        },
+      },
+      async (request, reply) => {
+        const userId = await request.getCurrentUserId();
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, name: true, email: true },
+        });
+        console.log(userId, user);
+
+        if (!user) {
+          throw new UnauthorizedError("Acesso Negado");
+        }
+
+        return reply.status(200).send({ user });
+      }
+    );
+};
