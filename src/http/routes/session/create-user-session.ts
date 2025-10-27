@@ -12,7 +12,6 @@ export const createUserSession = (app: FastifyInstance) => {
       schema: {
         tags: ["Session"],
         summary: "Criar sessão do usuário",
-
         body: z.object({
           email: z
             .string("O email é obrigatório")
@@ -58,7 +57,7 @@ export const createUserSession = (app: FastifyInstance) => {
         { sign: { expiresIn: "7d" } }
       );
 
-      return reply.status(200).send({
+      return reply.send({
         user: {
           id: userWithSameEmail.id,
           name: userWithSameEmail.name,

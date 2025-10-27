@@ -16,6 +16,7 @@ import {
 import { errorHandler } from "./routes/error-handler.js";
 import { createUserSession } from "./routes/session/create-user-session.js";
 import { getUserSession } from "./routes/session/get-user-session.js";
+import { createInvite } from "./routes/invite/create-invite.js";
 
 const PORT = Number(process.env.PORT) || 3333;
 const HOST = process.env.HOST || "localhost";
@@ -63,6 +64,7 @@ server.register(fastifySwaggerUi, {
 // routes
 server.register(createUserSession);
 server.register(getUserSession);
+server.register(createInvite);
 
 server.listen({ port: PORT, host: HOST }).then(() => {
   console.log(`✅ Servidor rodando em: http://${HOST}:${PORT}`);

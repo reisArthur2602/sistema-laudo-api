@@ -29,17 +29,17 @@ export const getUserSession = (app: FastifyInstance) => {
       },
       async (request, reply) => {
         const userId = await request.getCurrentUserId();
+
         const user = await prisma.user.findUnique({
           where: { id: userId },
           select: { id: true, name: true, email: true },
         });
-        console.log(userId, user);
 
         if (!user) {
           throw new UnauthorizedError("Acesso Negado");
         }
 
-        return reply.status(200).send({ user });
+        return reply.send({ user });
       }
     );
 };
