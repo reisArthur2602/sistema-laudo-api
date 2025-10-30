@@ -1,11 +1,10 @@
+// src/http/routes/invites/create-invite.ts
 import { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
 import { prisma } from "../../../lib/prisma.js";
 import { BadRequestError } from "../_errors/bad-request-error.js";
-import { UnauthorizedError } from "../_errors/unauthorized-error.js";
 import { authPlugin } from "../../plugins/auth.js";
-import { transporter } from "../../../lib/nodemailer.js";
 import { Role } from "@prisma/client";
 
 export const createInvite = (app: FastifyInstance) => {
@@ -36,57 +35,42 @@ export const createInvite = (app: FastifyInstance) => {
       async (request, reply) => {
         const { email, role } = request.body;
         const { slug } = request.params;
-        const userId = await request.getCurrentUserId();
 
-        const member = await prisma.member.findFirst({
-          where: {
-            userId,
-            organization: { id: slug },
-          },
-          select: { role: true, organizationId: true },
+        const { organizationId } = await request.requireOrgRole(
+          slug,
+          Role.SUPER_ADMIN
+        );
+
+        const user = await prisma.user.findUnique({
+          where: { email },
+          select: { id: true },
         });
 
-        if (!member) {
-          throw new UnauthorizedError("Você não pertence a esta organização.");
-        }
-
-        if (member.role !== "SUPER_ADMIN") {
-          throw new UnauthorizedError(
-            "Apenas administradores podem criar convites."
+        if (!user) {
+          throw new BadRequestError(
+            "Não existe usuário cadastrado com este e-mail."
           );
         }
 
-        const memberWithSameEmail = await prisma.member.findFirst({
-          where: { organizationId: member.organizationId, user: { email } },
+        const alreadyMember = await prisma.member.findFirst({
+          where: { organizationId, user: { email } },
+          select: { id: true },
         });
 
-        if (memberWithSameEmail) {
-          throw new BadRequestError("Este email já está em uso.");
+        if (alreadyMember) {
+          throw new BadRequestError("Este e-mail já pertence à organização.");
         }
 
-        const token = await reply.jwtSign(
-          { email },
-          { sign: { expiresIn: "7d" } }
-        );
+        const expireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
         await prisma.invite.create({
           data: {
             email,
-            organizationId: member.organizationId,
-            token,
             role,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            expireAt,
+            organizationId,
           },
         });
-
-        const inviteUrl = `http://localhost:3000/acesso/convite?token=${token}`;
-
-        await transporter.sendMail({
-          from: `Suporte Grupo Master <${process.env.EMAIL_USER}>`,
-          to: email,
-          subject: "Convite para criar sua conta",
-          html: `Você foi convidado para participar de uma organização. Clique para aceitar: <a href="${inviteUrl}">${inviteUrl}</a>`,
-        }); 
 
         return reply.status(201).send(null);
       }

@@ -1,13 +1,13 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
+import bcrypt from "bcryptjs";
 import { prisma } from "../../../lib/prisma.js";
 import { BadRequestError } from "../_errors/bad-request-error.js";
-import bcrypt from "bcryptjs";
 
-export const createUserSession = (app: FastifyInstance) => {
+export const createSession = (app: FastifyInstance) => {
   app.withTypeProvider<ZodTypeProvider>().post(
-    "/create-session",
+    "/auth",
     {
       schema: {
         tags: ["Session"],
@@ -15,6 +15,8 @@ export const createUserSession = (app: FastifyInstance) => {
         body: z.object({
           email: z
             .string("O email é obrigatório")
+            .trim()
+            .min(1, "O email é obrigatório")
             .email("Formato de email inválido"),
           password: z
             .string("A senha é obrigatória")
@@ -35,33 +37,35 @@ export const createUserSession = (app: FastifyInstance) => {
     async (request, reply) => {
       const { email, password } = request.body;
 
-      const userWithSameEmail = await prisma.user.findUnique({
+      // procurar usuário por email (normalizado)
+      const user = await prisma.user.findUnique({
         where: { email },
+        select: { id: true, name: true, email: true, password: true },
       });
 
-      if (!userWithSameEmail) {
+      // erro genérico (não vazar se email existe)
+      if (!user) {
         throw new BadRequestError("Credenciais inválidas");
       }
 
-      const isPasswordValid = await bcrypt.compare(
-        password,
-        userWithSameEmail.password
-      );
-
+      const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         throw new BadRequestError("Credenciais inválidas");
       }
 
-      const token = await reply.jwtSign(
-        { sub: userWithSameEmail.id },
-        { sign: { expiresIn: "7d" } }
-      );
+      const token = await reply.jwtSign({
+        sub: user.id,
+        email: user.email,
+      });
+
+      // evitar cache em proxies/navegadores
+      reply.header("Cache-Control", "no-store");
 
       return reply.send({
         user: {
-          id: userWithSameEmail.id,
-          name: userWithSameEmail.name,
-          email: userWithSameEmail.email,
+          id: user.id,
+          name: user.name,
+          email: user.email,
         },
         token,
       });

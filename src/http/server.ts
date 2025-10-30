@@ -5,7 +5,7 @@ import fastifyCors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
-
+import multipart from "@fastify/multipart";
 import {
   jsonSchemaTransform,
   serializerCompiler,
@@ -14,12 +14,29 @@ import {
 } from "fastify-type-provider-zod";
 
 import { errorHandler } from "./routes/error-handler.js";
-import { createUserSession } from "./routes/session/create-user-session.js";
-import { getUserSession } from "./routes/session/get-user-session.js";
+import { createSession } from "./routes/auth/create-session.js";
+import { getSession } from "./routes/auth/get-session.js";
 import { createInvite } from "./routes/invite/create-invite.js";
+import { notificationNewStudies } from "./routes/webhook/notification-new-studies.js";
+import { acceptInvite } from "./routes/invite/accept-invite.js";
+import { rejectInvite } from "./routes/invite/reject-invite.js";
+import { listInvite } from "./routes/invite/list-invites.js";
+import { createOrganization } from "./routes/organization/create-organization.js";
+import { listOrganizations } from "./routes/organization/list-organizations.js";
+import { deleteOrganization } from "./routes/organization/delete-organization.js";
+import { listMembers } from "./routes/members/list-members.js";
+import { getMyMembership } from "./routes/members/get-my-membership.js";
+import { deleteMember } from "./routes/members/delete-member.js";
+import { renameOrganization } from "./routes/organization/rename-organization.js";
+import { deleteEquipment } from "./routes/equipament/delete-equipament.js";
+import { createEquipment } from "./routes/equipament/create-equipament.js";
+import { listEquipments } from "./routes/equipament/list-equipments.js";
+import { renameEquipment } from "./routes/equipament/rename-equipament.js";
+import { uploadStudyPdf } from "./routes/studies/upload-study-pdf.js";
+import { listStudyAttachments } from "./routes/studies/list-study-attachments.js";
+import { deleteStudyAttachment } from "./routes/studies/delete-study-attachment.js";
 
 const PORT = Number(process.env.PORT) || 3333;
-const HOST = process.env.HOST || "localhost";
 
 const server = fastify().withTypeProvider<ZodTypeProvider>();
 
@@ -61,12 +78,42 @@ server.register(fastifySwaggerUi, {
   routePrefix: "/docs",
 });
 
-// routes
-server.register(createUserSession);
-server.register(getUserSession);
-server.register(createInvite);
+server.register(createSession);
+server.register(getSession);
 
-server.listen({ port: PORT, host: HOST }).then(() => {
-  console.log(`✅ Servidor rodando em: http://${HOST}:${PORT}`);
-  console.log(`📘 Documentação Swagger: http://${HOST}:${PORT}/docs`);
+server.register(createInvite);
+server.register(acceptInvite);
+server.register(rejectInvite);
+server.register(listInvite);
+
+server.register(createOrganization);
+server.register(listOrganizations);
+server.register(deleteOrganization);
+server.register(renameOrganization);
+
+server.register(listMembers);
+server.register(getMyMembership);
+server.register(deleteMember);
+
+server.register(deleteEquipment);
+server.register(createEquipment);
+server.register(listEquipments);
+server.register(renameEquipment);
+
+server.register(uploadStudyPdf);
+server.register(listStudyAttachments);
+server.register(deleteStudyAttachment);
+
+server.register(notificationNewStudies);
+
+server.register(multipart, {
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+    files: 1,
+  },
+});
+
+server.listen({ port: PORT, host: "0.0.0.0" }).then(() => {
+  console.log(`✅ Servidor rodando em ${PORT}`);
+  console.log(`📘 Documentação Swagger: /docs`);
 });

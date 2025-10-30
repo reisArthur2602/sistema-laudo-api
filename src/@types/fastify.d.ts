@@ -1,9 +1,18 @@
+// src/types/fastify.d.ts
 import "fastify";
-
-import type { Member, Organization } from "@prisma/client";
+import { Role } from "@prisma/client";
 
 declare module "fastify" {
-  export interface FastifyRequest {
+  interface FastifyRequest {
     getCurrentUserId(): Promise<string>;
+
+    getOrgMembershipBySlug(
+      slug: string
+    ): Promise<{ organizationId: string; role: Role }>;
+  
+    requireOrgRole(
+      slug: string,
+      allowed: Role[] | Role
+    ): Promise<{ organizationId: string; role: Role }>;
   }
 }

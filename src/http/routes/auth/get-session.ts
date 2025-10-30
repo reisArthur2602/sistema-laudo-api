@@ -1,16 +1,16 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
 import { prisma } from "../../../lib/prisma.js";
 import { UnauthorizedError } from "../_errors/unauthorized-error.js";
 import { authPlugin } from "../../plugins/auth.js";
 
-export const getUserSession = (app: FastifyInstance) => {
+export const getSession = (app: FastifyInstance) => {
   app
     .withTypeProvider<ZodTypeProvider>()
     .register(authPlugin)
     .get(
-      "/user-session",
+      "/auth/profile",
       {
         schema: {
           tags: ["Session"],
@@ -36,9 +36,10 @@ export const getUserSession = (app: FastifyInstance) => {
         });
 
         if (!user) {
-          throw new UnauthorizedError("Acesso Negado");
+          throw new UnauthorizedError("Acesso negado");
         }
 
+        reply.header("Cache-Control", "no-store");
         return reply.send({ user });
       }
     );

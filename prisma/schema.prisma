@@ -9,7 +9,6 @@ datasource db {
 
 enum Role {
   SUPER_ADMIN
-  ADMIN
   MEMBER
 }
 
@@ -23,12 +22,22 @@ model User {
 }
 
 model Organization {
-  id        String      @id @default(cuid())
-  name      String
-  members   Member[]    @relation("OrgMembers")
-  invites   Invite[]    @relation("OrgInvites")
-  patients  Patient[]   @relation("OrgPatients")
-  createdAt DateTime    @default(now())
+  id          String        @id @default(cuid())
+  name        String
+  slug        String       @unique
+  members     Member[]      @relation("OrgMembers")
+  invites     Invite[]      @relation("OrgInvites")
+  patients    Patient[]     @relation("OrgPatients")
+  equipments  Equipment[]   @relation("OrgEquipments")
+  createdAt   DateTime      @default(now())
+}
+
+model Equipment {
+  id              String        @id @default(cuid())
+  name            String
+  organization    Organization  @relation("OrgEquipments", fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId  String
+  createdAt       DateTime      @default(now())
 }
 
 model Member {
@@ -38,71 +47,63 @@ model Member {
   organization    Organization  @relation("OrgMembers", fields: [organizationId], references: [id], onDelete: Cascade)
   organizationId  String
   role            Role
-  active          Boolean       @default(false)
   createdAt       DateTime      @default(now())
 
   @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
 }
 
 model Invite {
-  id              String        @id @default(cuid())
-  organization    Organization  @relation("OrgInvites", fields: [organizationId], references: [id], onDelete: Cascade)
-  organizationId  String
-  email           String
-  role            Role
-  token           String        @unique
-  expiresAt       DateTime
-  createdAt       DateTime      @default(now())
+  id               String        @id @default(cuid())
+  organization     Organization  @relation("OrgInvites", fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId   String
+  email   String
+  role             Role
+  expireAt        DateTime
+   @@unique([email, organizationId])
 }
+
 
 model Patient {
   id              String        @id @default(cuid())
+  name            String
+  cpf             String        @unique
   organization    Organization  @relation("OrgPatients", fields: [organizationId], references: [id], onDelete: Cascade)
   organizationId  String
-  name            String
-  patientId       String?
-  studies         Study[]       @relation("PatientStudies")
+
+  studies         Study[]
   createdAt       DateTime      @default(now())
 }
 
-model Study {
-  id          String     @id @default(cuid())
-  patient     Patient    @relation("PatientStudies", fields: [patientId], references: [id], onDelete: Cascade)
-  patientId   String
-  studyId     String
-  modality    String
-  studyDate   DateTime
-  series      Series[]   @relation("StudySeries")
-  reports     Report[]   @relation("StudyReports")
-  createdAt   DateTime   @default(now())
+model StudyAttachment {
+  id        String   @id @default(cuid())
+  study     Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  studyId   String
+  filename  String
+  mimeType  String
+  size      Int
+  path      String
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([studyId])
 }
 
-model Series {
-  id            String      @id @default(cuid())
-  study         Study       @relation("StudySeries", fields: [studyId], references: [id], onDelete: Cascade)
-  studyId       String
-  modality      String
-  orthancId     String
-  operatorName  String?
-  instances     Instance[]  @relation("SeriesInstances")
-  createdAt     DateTime    @default(now())
+model Study {
+  id          String           @id @default(cuid())
+  patient     Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId   String
+  instances   Instance[]
+  attachments StudyAttachment[]
+  createdAt   DateTime         @default(now())
 }
 
 model Instance {
-  id          String    @id @default(cuid())
-  series      Series    @relation("SeriesInstances", fields: [seriesId], references: [id], onDelete: Cascade)
-  seriesId    String
-  orthancId   String
-  previewUrl  String?
-  fileUrl     String?
-  createdAt   DateTime  @default(now())
-}
-
-model Report {
-  id          String    @id @default(cuid())
-  study       Study     @relation("StudyReports", fields: [studyId], references: [id], onDelete: Cascade)
+  id          String      @id @default(cuid())
+  study       Study       @relation(fields: [studyId], references: [id], onDelete: Cascade)
   studyId     String
-  name        String
-  path        String
-  createdAt   DateTime  @default(now())
+  previewUrl  String
+  dicomUrl    String
+  createdAt   DateTime    @default(now())
 }

@@ -1,15 +1,20 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
-import { faker } from "@faker-js/faker";
+
 const prisma = new PrismaClient();
 
-const seed = async () => {
-  await prisma.user.deleteMany();
-  await prisma.organization.deleteMany();
+const EQUIPMENTS = [
+  "GE Healthcare",
+  "SAMSUNG MEDISON CO., LTD.",
+  "GE MEDICAL SYSTEMS",
+  "Philips Healthcare",
+  "KODAK",
+];
 
+async function seed() {
   const passwordHash = await hash("123456", 5);
 
-  const admin = await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email: "suporte@grupo-master.com",
       password: passwordHash,
@@ -17,72 +22,29 @@ const seed = async () => {
     },
   });
 
-  const member1 = await prisma.user.create({
-    data: {
-      email: faker.internet.email({ provider: "gmail.com" }),
-      password: passwordHash,
-      name: faker.person.firstName(),
-    },
-  });
-
-  const member2 = await prisma.user.create({
-    data: {
-      email: faker.internet.email({ provider: "gmail.com" }),
-      password: passwordHash,
-      name: faker.person.firstName(),
-    },
-  });
-
-  const member3 = await prisma.user.create({
-    data: {
-      email: faker.internet.email({ provider: "gmail.com" }),
-      password: passwordHash,
-      name: faker.person.firstName(),
-    },
-  });
-
   await prisma.organization.create({
     data: {
-      name: "centro diagnosticos galeao",
+      name: "Centro Diagnóstico Galeão",
+      slug: "centro-diagnostico-galeao",
       members: {
-        createMany: {
-          data: [
-            { userId: admin.id, role: "SUPER_ADMIN", active: true },
-            { userId: member1.id, role: "MEMBER", active: true },
-            { userId: member2.id, role: "MEMBER", active: true },
-            { userId: member3.id, role: "MEMBER", active: true },
-          ],
+        create: {
+          userId: user.id,
+          role: "SUPER_ADMIN",
         },
       },
-
-      patients: {
+      equipments: {
         createMany: {
-          data: [
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-            { name: faker.person.fullName() },
-          ],
+          data: EQUIPMENTS.map((eq) => ({ name: eq })),
         },
       },
     },
+    include: {
+      equipments: true,
+      members: true,
+    },
   });
-};
+
+  console.log("✅ Organização e equipamentos criados com sucesso!");
+}
 
 seed();
