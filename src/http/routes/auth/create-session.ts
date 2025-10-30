@@ -10,7 +10,8 @@ export const createSession = (app: FastifyInstance) => {
     "/auth",
     {
       schema: {
-        tags: ["Session"],
+        tags: ["Auth"],
+        security: [],
         summary: "Criar sessão do usuário",
         body: z.object({
           email: z
@@ -37,13 +38,11 @@ export const createSession = (app: FastifyInstance) => {
     async (request, reply) => {
       const { email, password } = request.body;
 
-      // procurar usuário por email (normalizado)
       const user = await prisma.user.findUnique({
         where: { email },
         select: { id: true, name: true, email: true, password: true },
       });
 
-      // erro genérico (não vazar se email existe)
       if (!user) {
         throw new BadRequestError("Credenciais inválidas");
       }
@@ -58,7 +57,6 @@ export const createSession = (app: FastifyInstance) => {
         email: user.email,
       });
 
-      // evitar cache em proxies/navegadores
       reply.header("Cache-Control", "no-store");
 
       return reply.send({

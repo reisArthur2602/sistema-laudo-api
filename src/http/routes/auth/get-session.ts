@@ -13,7 +13,7 @@ export const getSession = (app: FastifyInstance) => {
       "/auth/profile",
       {
         schema: {
-          tags: ["Session"],
+          tags: ["Auth"],
           summary: "Buscar sessão do usuário logado",
           security: [{ bearerAuth: [] }],
           response: {
