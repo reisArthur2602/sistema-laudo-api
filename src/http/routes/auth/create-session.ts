@@ -53,7 +53,7 @@ export const createSession = (app: FastifyInstance) => {
       }
 
       const token = await reply.jwtSign({
-        sub: user.id,
+        userId: user.id,
         email: user.email,
       });
 

@@ -1,4 +1,3 @@
-
 import type { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
@@ -8,7 +7,7 @@ import { Role } from "@prisma/client";
 
 import slugify from "slugify";
 
-export const createOrganization= (app: FastifyInstance) => {
+export const createOrganization = (app: FastifyInstance) => {
   app
     .withTypeProvider<ZodTypeProvider>()
     .register(authPlugin)
@@ -52,7 +51,7 @@ export const createOrganization= (app: FastifyInstance) => {
           select: { id: true, name: true, slug: true, createdAt: true },
         });
 
-        return reply.status(201);
+        return reply.status(201).send(null);
       }
     );
 };

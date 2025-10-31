@@ -1,4 +1,3 @@
-// server.ts (ou server.js, se preferir ESM)
 import "dotenv/config";
 
 import fastify from "fastify";
@@ -6,7 +5,7 @@ import fastifyCors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
-import multipart from "@fastify/multipart";
+import multipart, { fastifyMultipart } from "@fastify/multipart";
 
 import {
   jsonSchemaTransform,
@@ -15,7 +14,6 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 
-// ── Routes / plugins locais ────────────────────────────────────────────────────
 import { errorHandler } from "./routes/error-handler.js";
 
 // Auth
@@ -26,7 +24,6 @@ import { getSession } from "./routes/auth/get-session.js";
 import { createInvite } from "./routes/invite/create-invite.js";
 import { acceptInvite } from "./routes/invite/accept-invite.js";
 import { rejectInvite } from "./routes/invite/reject-invite.js";
-import { listInvite } from "./routes/invite/list-invites.js";
 
 // Organizations
 import { createOrganization } from "./routes/organization/create-organization.js";
@@ -52,11 +49,19 @@ import { deleteStudyAttachment } from "./routes/studies/delete-study-attachment.
 
 // Webhooks
 import { notificationNewStudies } from "./routes/webhook/notification-new-studies.js";
+import { listStudies } from "./routes/studies/list-studies.js";
+import { listPatients } from "./routes/patient/list-patients.js";
+import { listInvites } from "./routes/invite/list-invites.js";
+import { getOrganization } from "./routes/organization/get-organization.js";
+import { listOrganizationPatientStudies } from "./routes/studies/list-organization-patient-studies.js";
+import { createPatientSession } from "./routes/auth/create-patient-session.js";
+import { getPatientLastStudy } from "./routes/patient/get-patient-last-study.js";
+import { listPatientStudies } from "./routes/patient/list-patient-studies.js";
+import { getPatientSession } from "./routes/auth/get-patient-session.js";
 
-// ── Configuração básica ────────────────────────────────────────────────────────
 const PORT = Number(process.env.PORT) || 3333;
 const HOST = process.env.HOST || "0.0.0.0";
-const PUBLIC_URL = (process.env.PUBLIC_URL || "").replace(/\/+$/, ""); // opcional
+const PUBLIC_URL = (process.env.PUBLIC_URL || "").replace(/\/+$/, "");
 
 const server = fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
 
@@ -64,28 +69,18 @@ server.setSerializerCompiler(serializerCompiler);
 server.setValidatorCompiler(validatorCompiler);
 server.setErrorHandler(errorHandler);
 
-// ── Segurança / CORS ──────────────────────────────────────────────────────────
 server.register(fastifyJwt, {
   secret: process.env.JWT_SECRET ?? "fallback-secret",
 });
 
 server.register(fastifyCors, {
-  origin: true, // use "*" se realmente precisar liberar tudo
+  origin: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 
-// ── Multipart (upload) ────────────────────────────────────────────────────────
-server.register(multipart, {
-  attachFieldsToBody: true,
-  limits: {
-    fileSize: 20 * 1024 * 1024, // 20 MB
-    files: 1,
-  },
-});
+server.register(fastifyMultipart);
 
-// ── Swagger / OpenAPI ─────────────────────────────────────────────────────────
-// Dica: mantenha as tags declaradas aqui e reutilize-as nas rotas (schema.tags)
 server.register(fastifySwagger, {
   openapi: {
     info: {
@@ -140,18 +135,21 @@ server.register(fastifySwaggerUi, {
 // Auth
 server.register(createSession);
 server.register(getSession);
+server.register(getPatientSession);
+server.register(createPatientSession);
 
 // Invites
 server.register(createInvite);
 server.register(acceptInvite);
 server.register(rejectInvite);
-server.register(listInvite);
+server.register(listInvites);
 
 // Organizations
 server.register(createOrganization);
 server.register(listOrganizations);
 server.register(deleteOrganization);
 server.register(renameOrganization);
+server.register(getOrganization);
 
 // Members
 server.register(listMembers);
@@ -165,15 +163,22 @@ server.register(renameEquipment);
 server.register(deleteEquipment);
 
 // Studies
+server.register(listStudies);
 server.register(uploadStudyPdf);
 server.register(listStudyAttachments);
 server.register(deleteStudyAttachment);
+server.register(listOrganizationPatientStudies);
+
+// Patiente
+server.register(listPatients);
+server.register(getPatientLastStudy);
+server.register(listPatientStudies);
 
 // Webhooks
 server.register(notificationNewStudies);
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-server.listen({ port: PORT, host: HOST }).then(() => {
+server.listen({ port: PORT, host: "0.0.0.0" }).then(() => {
   server.log.info(`✅ Servidor rodando em http://${HOST}:${PORT}`);
   server.log.info(`📘 Swagger UI: /docs`);
 });

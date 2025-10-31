@@ -42,7 +42,7 @@ export const createEquipment = (app: FastifyInstance) => {
           },
         });
 
-        return reply.status(201);
+        return reply.status(201).send(null);
       }
     );
 };

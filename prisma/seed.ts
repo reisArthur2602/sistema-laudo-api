@@ -21,6 +21,13 @@ async function seed() {
       name: "Suporte",
     },
   });
+  const user1 = await prisma.user.create({
+    data: {
+      email: "arthur@grupo-master.com",
+      password: passwordHash,
+      name: "Arthur",
+    },
+  });
 
   await prisma.organization.create({
     data: {

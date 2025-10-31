@@ -23,7 +23,7 @@ export const renameOrganization = (app: FastifyInstance) => {
           }),
 
           response: {
-            200: z.null(),
+            204: z.null(),
           },
         },
       },
@@ -41,7 +41,7 @@ export const renameOrganization = (app: FastifyInstance) => {
           select: { id: true, name: true, slug: true, createdAt: true },
         });
 
-        return reply.status(200);
+        return reply.status(204).send(null);
       }
     );
 };

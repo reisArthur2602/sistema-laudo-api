@@ -5,7 +5,7 @@ import { prisma } from "../../../lib/prisma.js";
 import { authPlugin } from "../../plugins/auth.js";
 import { BadRequestError } from "../_errors/bad-request-error.js";
 import { Role } from "@prisma/client";
-import * as ftp from "basic-ftp";
+import { deleteFromFtp } from "../../../lib/ftp.js";
 
 export const deleteStudyAttachment = (app: FastifyInstance) => {
   app
@@ -53,20 +53,7 @@ export const deleteStudyAttachment = (app: FastifyInstance) => {
           throw new BadRequestError("Anexo não encontrado na organização.");
         }
 
-        const client = new ftp.Client();
-        client.ftp.verbose = false;
-        try {
-          await client.access({
-            host: process.env.FTP_HOST!,
-            user: process.env.FTP_USER!,
-            password: process.env.FTP_PASSWORD!,
-            secure: (process.env.FTP_SECURE || "false") === "true",
-          });
-          await client.remove(attachment.path).catch(() => {});
-        } finally {
-          client.close();
-        }
-
+        await deleteFromFtp(attachment.path);
         await prisma.studyAttachment.delete({ where: { id: attachmentId } });
 
         return reply.status(204).send(null);

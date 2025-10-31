@@ -1,4 +1,3 @@
-
 import type { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
@@ -19,7 +18,10 @@ export const uploadStudyPdf = (app: FastifyInstance) => {
           tags: ["Study"],
           security: [{ bearerAuth: [] }],
           summary: "Anexar PDF a um Study (salvando no FTP)",
-          params: z.object({ slug: z.string(), studyId: z.string() }),
+          params: z.object({
+            slug: z.string(),
+            studyId: z.string(),
+          }),
           response: {
             201: z.object({
               id: z.string(),
@@ -34,12 +36,14 @@ export const uploadStudyPdf = (app: FastifyInstance) => {
       },
       async (request, reply) => {
         const { slug, studyId } = request.params;
-
         const { organizationId } = await request.getOrgMembershipBySlug(slug);
 
         const study = await prisma.study.findUnique({
           where: { id: studyId },
-          select: { id: true, patient: { select: { organizationId: true } } },
+          select: {
+            id: true,
+            patient: { select: { organizationId: true } },
+          },
         });
 
         if (!study || study.patient.organizationId !== organizationId) {
@@ -63,17 +67,16 @@ export const uploadStudyPdf = (app: FastifyInstance) => {
           throw new BadRequestError("Arquivo inválido.");
         }
 
-        const baseDir = process.env.FTP_BASE_DIR || "/studies";
-        const baseUrl = (process.env.FTP_BASE_URL || "").replace(/\/+$/, "");
         const original = data.filename || "document.pdf";
         const safeName = original.replace(/[^\w.\-]+/g, "_");
-        const stamp = Date.now();
-        const finalName = `${stamp}_${safeName}`;
-        const remotePath = path.posix.join(baseDir, studyId, finalName);
+        const finalName = `${Date.now()}_${safeName}`;
 
-        await uploadBufferToFtp({ remotePath, buffer: fileBuffer });
+        const remotePath = path.posix.join("studies", studyId, finalName);
 
-        const publicUrl = `${baseUrl}/${studyId}/${finalName}`;
+        const uploadedUrl = await uploadBufferToFtp({
+          remotePath,
+          buffer: fileBuffer,
+        });
 
         const created = await prisma.studyAttachment.create({
           data: {
@@ -82,7 +85,7 @@ export const uploadStudyPdf = (app: FastifyInstance) => {
             mimeType: mime,
             size: fileBuffer.length,
             path: remotePath,
-            url: publicUrl,
+            url: uploadedUrl,
           },
           select: {
             id: true,

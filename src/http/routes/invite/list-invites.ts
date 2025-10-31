@@ -1,51 +1,61 @@
-// src/http/routes/invites/create-invite.ts
 import { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
 import { prisma } from "../../../lib/prisma.js";
-import { BadRequestError } from "../_errors/bad-request-error.js";
 import { authPlugin } from "../../plugins/auth.js";
-import { Role } from "@prisma/client";
+import { BadRequestError } from "../_errors/bad-request-error.js";
 
-export const listInvite = (app: FastifyInstance) => {
+export const listInvites = (app: FastifyInstance) => {
   app
     .withTypeProvider<ZodTypeProvider>()
     .register(authPlugin)
     .get(
-      "/org/:slug/invites",
+      "/invites",
       {
         schema: {
           tags: ["Invite"],
+          summary: "Listar convites recebidos pelo usuário logado",
           security: [{ bearerAuth: [] }],
-          summary: "Listar convites da organização (admin)",
-          params: z.object({
-            slug: z.string(),
-          }),
-
           response: {
-            200: z.array(
-              z.object({
-                id: z.string(),
-                email: z.string().email(),
-                role: z.nativeEnum(Role),
-                expireAt: z.date(),
-              })
-            ),
+            200: z.object({
+              invites: z.array(
+                z.object({
+                  id: z.string().cuid(),
+                  email: z.string().email(),
+                  role: z.enum(["SUPER_ADMIN", "MEMBER"]),
+                  organization: z.object({
+                    id: z.string().cuid(),
+                    name: z.string(),
+                    slug: z.string(),
+                  }),
+                  expireAt: z.date(),
+                })
+              ),
+            }),
           },
         },
       },
       async (request, reply) => {
-        const { slug } = request.params;
+        const userId = await request.getCurrentUserId();
 
-        await request.requireOrgRole(slug, Role.SUPER_ADMIN);
-
-        const invites = await prisma.invite.findMany({
-          where: { expireAt: { gt: new Date() } },
-          select: { id: true, email: true, role: true, expireAt: true },
-          orderBy: { expireAt: "asc" },
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true },
         });
 
-        return reply.send(invites);
+        if (!user) throw new BadRequestError("Usuário não encontrado.");
+
+        const invites = await prisma.invite.findMany({
+          where: { email: user.email },
+          include: {
+            organization: {
+              select: { id: true, name: true, slug: true },
+            },
+          },
+          orderBy: { expireAt: "desc" },
+        });
+
+        return reply.status(200).send({ invites });
       }
     );
 };

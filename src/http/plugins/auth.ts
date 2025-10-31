@@ -1,7 +1,7 @@
 // src/http/plugins/auth.ts (ou caminho equivalente)
 import type { FastifyInstance } from "fastify";
 import { fastifyPlugin } from "fastify-plugin";
-import { prisma } from "../../lib/prisma.js"; 
+import { prisma } from "../../lib/prisma.js";
 import { UnauthorizedError } from "../routes/_errors/unauthorized-error.js";
 import { Role } from "@prisma/client";
 
@@ -9,16 +9,29 @@ export const authPlugin = fastifyPlugin(async (app: FastifyInstance) => {
   app.addHook("preHandler", async (request) => {
     request.getCurrentUserId = async () => {
       try {
-        const { sub } = await request.jwtVerify<{ sub: string }>();
-        return sub;
+        const { userId } = await request.jwtVerify<{ userId: string }>();
+        if (!userId) throw new UnauthorizedError("Token inválido ou expirado");
+        return userId;
       } catch {
         throw new UnauthorizedError("Token inválido ou expirado");
       }
     };
 
+    request.getCurrentPatientId = async () => {
+      try {
+        const { patientId } = await request.jwtVerify<{
+          patientId: string;
+        }>();
+        if (!patientId)
+          throw new UnauthorizedError("Token inválido ou expirado");
+        return patientId;
+      } catch {
+        throw new UnauthorizedError("Token de paciente inválido ou expirado.");
+      }
+    };
+
     request.getOrgMembershipBySlug = async (slug: string) => {
       const userId = await request.getCurrentUserId();
-
 
       const org = await prisma.organization.findUnique({
         where: { slug },
@@ -26,7 +39,6 @@ export const authPlugin = fastifyPlugin(async (app: FastifyInstance) => {
       });
 
       if (!org) {
-
         throw new UnauthorizedError("Você não pertence a esta organização.");
       }
 
